@@ -681,7 +681,44 @@ class ConfigProdigy:
 
         config["Misc"]["BlessOverride"] = []
         config["Misc"]["Boot"]["HideAuxiliary"] = False
-        config["Misc"]["Boot"]["PickerMode"] = "External"
+        
+        # Determine PickerMode: Use CLI (Builtin) if GUI (External) might not be supported
+        # to prevent black screen issues
+        use_builtin_picker = False
+        
+        # Check for conditions where GUI picker may fail
+        for gpu_name, gpu_props in hardware_report.get("GPU", {}).items():
+            if gpu_props.get("Device Type") == "Integrated GPU" and "Intel" in gpu_props.get("Manufacturer", ""):
+                device_id = gpu_props.get("Device ID", "")[5:]
+                
+                # Sandy Bridge and Ivy Bridge with VGA-only output
+                if device_id.startswith(("01")) and all(
+                    monitor_info.get("Connector Type") == "VGA" and monitor_info.get("Connected GPU", gpu_name) == gpu_name 
+                    for monitor_name, monitor_info in hardware_report.get("Monitor", {}).items()
+                ):
+                    use_builtin_picker = True
+                    break
+                
+                # Apollo Lake and Gemini Lake (common in Chromebooks, may have issues)
+                if device_id.startswith(("5A", "31")):
+                    use_builtin_picker = True
+                    break
+                
+                # Iron Lake (1st Gen) - very old, GUI picker not reliable
+                if device_id.startswith(("0042", "0046")):
+                    use_builtin_picker = True
+                    break
+        
+        # Legacy BIOS mode - GUI picker may not work reliably
+        if hardware_report.get("BIOS", {}).get("Firmware Type") == "Legacy":
+            use_builtin_picker = True
+        
+        # Chromebook detection - GUI picker often problematic
+        is_chromebook = self.chromebook_spoofer.is_chromebook(hardware_report)
+        if is_chromebook:
+            use_builtin_picker = True
+        
+        config["Misc"]["Boot"]["PickerMode"] = "Builtin" if use_builtin_picker else "External"
         config["Misc"]["Debug"]["AppleDebug"] = config["Misc"]["Debug"]["ApplePanic"] = False
         config["Misc"]["Debug"]["DisableWatchDog"] = True
         config["Misc"]["Entries"] = []
