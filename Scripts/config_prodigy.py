@@ -6,6 +6,7 @@ from Scripts.datasets import os_data
 from Scripts.datasets import pci_data
 from Scripts.datasets import codec_layouts
 from Scripts import gathering_files
+from Scripts import chromebook_spoofer
 from Scripts import smbios
 from Scripts import utils
 import random
@@ -15,6 +16,7 @@ class ConfigProdigy:
         self.g = gathering_files.gatheringFiles()
         self.smbios = smbios.SMBIOS()
         self.utils = utils.Utils()
+        self.chromebook_spoofer = chromebook_spoofer.ChromebookSpoofer()
         self.cpuids = {
             "Ivy Bridge": "A9060300",
             "Haswell": "C3060300",
@@ -322,13 +324,29 @@ class ConfigProdigy:
             for gpu_name, gpu_info in hardware_report.get("GPU", {}).items():
                 if gpu_info.get("Device Type") == "Integrated GPU":
                     if "Intel" in gpu_info.get("Manufacturer"):
-                        add_device_property(gpu_info.get("PCI Path", "PciRoot(0x0)/Pci(0x2,0x0)"), self.igpu_properties(
-                            "NUC" if "NUC" in hardware_report.get("Motherboard").get("Name") else hardware_report.get("Motherboard").get("Platform"), 
-                            (gpu_name, gpu_info),
-                            hardware_report.get("Monitor", {}),
-                            macos_version
-                        ))
-                        if deviceproperties_add[gpu_info.get("PCI Path", "PciRoot(0x0)/Pci(0x2,0x0)")]:
+                        # Check for Chromebook and apply iGPU spoofing
+                        is_chromebook = self.chromebook_spoofer.is_chromebook(hardware_report)
+                        pci_path = gpu_info.get("PCI Path", "PciRoot(0x0)/Pci(0x2,0x0)")
+                        
+                        if is_chromebook:
+                            chromebook_igpu_spoof = self.chromebook_spoofer.spoof_igpu_for_chromebook(hardware_report, macos_version)
+                            if gpu_name in chromebook_igpu_spoof:
+                                spoof_info = chromebook_igpu_spoof[gpu_name]
+                                chromebook_props = {
+                                    "device-id": spoof_info["spoofed_device_id"],
+                                    "AAPL,ig-platform-id": spoof_info["AAPL,ig-platform-id"]
+                                }
+                                add_device_property(pci_path, chromebook_props)
+                        
+                        if not is_chromebook or not deviceproperties_add.get(pci_path):
+                            add_device_property(pci_path, self.igpu_properties(
+                                "NUC" if "NUC" in hardware_report.get("Motherboard").get("Name") else hardware_report.get("Motherboard").get("Platform"), 
+                                (gpu_name, gpu_info),
+                                hardware_report.get("Monitor", {}),
+                                macos_version
+                            ))
+                        
+                        if deviceproperties_add.get(pci_path):
                             if gpu_info.get("Codename") in ("Sandy Bridge", "Ivy Bridge"):
                                 for device_name, device_info in hardware_report.get("System Devices", {}).items():
                                     device_id = device_info.get("Device ID")

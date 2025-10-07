@@ -3,11 +3,13 @@ from Scripts.datasets import os_data
 from Scripts.datasets import pci_data
 from Scripts.datasets import codec_layouts
 from Scripts import utils
+from Scripts import chromebook_spoofer
 import time
 
 class CompatibilityChecker:
     def __init__(self):
         self.utils = utils.Utils()
+        self.chromebook_spoofer = chromebook_spoofer.ChromebookSpoofer()
 
     def show_macos_compatibility(self, device_compatibility):
         if not device_compatibility:
@@ -97,12 +99,18 @@ class CompatibilityChecker:
                     max_version = "21.99.99"
                 elif device_id.startswith(("09", "19", "59", "3E", "87", "9B")) and not device_id in ("3E90", "3E93", "3E99", "3E9C", "3EA1", "3EA4", "9B21", "9BA0", "9BA2", "9BA4", "9BA5", "9BA8", "9BAA", "9BAB", "9BAC"):
                     pass
+                elif device_id.startswith(("5A", "31")):
+                    # Apollo Lake (5A8x) and Gemini Lake (31xx) - HD 500/505/600/605
+                    min_version = "17.0.0"
+                    max_version = "21.99.99"
                 elif device_id.startswith("8A"):
                     min_version = "19.4.0"
                 else:
                     max_version = min_version = None
 
-                if self.is_low_end_intel_cpu(self.hardware_report.get("CPU").get("Processor Name")):
+                # Don't disable low-end CPUs if they have Apollo Lake or Gemini Lake iGPUs (Chromebooks)
+                is_chromebook = self.chromebook_spoofer.is_chromebook(self.hardware_report)
+                if self.is_low_end_intel_cpu(self.hardware_report.get("CPU").get("Processor Name")) and not is_chromebook:
                     max_version = min_version = None
             elif "AMD" in gpu_manufacturer:
                 if "Navi 2" in gpu_codename:

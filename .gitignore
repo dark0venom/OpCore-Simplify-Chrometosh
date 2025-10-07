@@ -160,4 +160,65 @@ cython_debug/
 #.idea/
 
 *.DS_Store
-OCK_Files
+
+# ==============================================================================
+# OpCore-Simplify-Chrometosh Specific
+# ==============================================================================
+
+# OpenCore Kexts and Files Directory
+OCK_Files/
+
+# Build Results
+Results/
+
+# Hardware Reports
+SysReport/
+Report.json
+*.json
+
+# Temporary Files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+
+# macOS Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Hardware Sniffer Executable (Windows)
+Scripts/Hardware-Sniffer-CLI.exe
+Hardware-Sniffer-CLI.exe
+
+# macserial Binary
+Scripts/macserial
+macserial
+
+# ACPI Dumps
+ACPI/
+*.aml
+*.dsl
+
+# Test Files and Development
+test_*.py
+*_test.py
+.vscode/
+.idea/
+
+# Logs and Debug Files
+*.log
+debug/
+logs/
+
+# User-specific Config (optional, if users customize)
+user_config.json
+custom_settings.json
